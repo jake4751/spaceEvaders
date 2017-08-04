@@ -9,10 +9,22 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+struct BodyType {
+    
+    static let None: UInt32 = 0
+    static let Meteor: UInt32 = 1
+    static let Bullet: UInt32 = 2
+    static let Hero: UInt32 = 4
+}
+
+class GameScene: SKScene, SKPhysicsContactDelegate {
+
     
     let hero = SKSpriteNode(imageNamed: "Spaceship")
     let heroSpeed: CGFloat = 100.0
+    var meteorScore = 0
+    
+    var scoreLabel = SKLabelNode(fontNamed: "Arial")
     
     
     //creates a random float between 0.0 and 1.0
@@ -33,11 +45,20 @@ class GameScene: SKScene {
         meteor.size.height = 35
         meteor.size.width = 50
         
-        let randomY = random() * ((meteor.size.height - meteor.size.height/2)-meteor.size.height/2) + meteor.size.height/2
+        let randomY = random() * ((size.height - meteor.size.height/2)-meteor.size.height/2) + meteor.size.height/2
+
         
-        meteor.position = CGPoint(x: meteor.size.width + meteor.size.width/2, y: randomY)
+        meteor.position = CGPoint(x: size.width + size.width/2, y: randomY)
+        
+        meteor.physicsBody = SKPhysicsBody(rectangleOf: meteor.size)
+        meteor.physicsBody?.isDynamic = true
+        meteor.physicsBody?.categoryBitMask = BodyType.Meteor
+        meteor.physicsBody?.contactTestBitMask = BodyType.Bullet | BodyType.Hero
+        meteor.physicsBody?.collisionBitMask = 0
         
         addChild(meteor)
+        
+      
         
         var moveMeteor: SKAction
         
@@ -47,7 +68,6 @@ class GameScene: SKScene {
         
         //repeatedly runs addMeteor function every second.
         
-        run(SKAction.repeatForever(SKAction.sequence([SKAction.run(addMeteor), SKAction.wait(forDuration: 1.0)])))
     }
 
     
@@ -62,6 +82,24 @@ class GameScene: SKScene {
         hero.size.width = 50
         
         hero.position = CGPoint(x: xCoord, y: yCoord)
+
+        
+        hero.physicsBody = SKPhysicsBody(rectangleOf: hero.size)
+        hero.physicsBody?.isDynamic = true
+        hero.physicsBody?.categoryBitMask = BodyType.Hero
+        hero.physicsBody?.contactTestBitMask = BodyType.Meteor
+        hero.physicsBody?.collisionBitMask = 0
+        
+        scoreLabel.fontColor = UIColor.white
+        
+        scoreLabel.fontSize = 40
+        
+        scoreLabel.position = CGPoint(x: self.size.width/2, y: self.size.height-50)
+        
+        addChild(scoreLabel)
+        
+        scoreLabel.text = "0"
+        
         
         addChild(hero)
         
@@ -83,6 +121,12 @@ class GameScene: SKScene {
         let swipeRight: UISwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(swipedRight))
         swipeRight.direction = .right
         view.addGestureRecognizer(swipeRight)
+        
+        run(SKAction.repeatForever(SKAction.sequence([SKAction.run(addMeteor), SKAction.wait(forDuration: 1)])))
+        
+        physicsWorld.gravity = CGVector(dx:0,dy:0)
+        
+        physicsWorld.contactDelegate = self
     }
     
     
@@ -164,6 +208,15 @@ class GameScene: SKScene {
         bullet.color = UIColor.purple
         bullet.size = CGSize(width: 8, height: 8)
         bullet.position = CGPoint (x: hero.position.x, y: hero.position.y)
+        
+        bullet.physicsBody = SKPhysicsBody(circleOfRadius: bullet.size.width/2)
+        bullet.physicsBody?.isDynamic = true
+        bullet.physicsBody?.categoryBitMask = BodyType.Bullet
+        bullet.physicsBody?.contactTestBitMask = BodyType.Meteor
+        bullet.physicsBody?.collisionBitMask = 0
+        bullet.physicsBody?.usesPreciseCollisionDetection = true
+        
+        
         addChild(bullet)
         
         let vector = CGVector(dx: -(hero.position.x - touchLocation.x), dy: -(hero.position.y - touchLocation.y))
@@ -175,6 +228,168 @@ class GameScene: SKScene {
             ])
         
         bullet.run(projectileAction)
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        
+        let bodyA = contact.bodyA
+        
+        let bodyB = contact.bodyB
+        
+        
+        
+        let contactA = bodyA.categoryBitMask
+        
+        let contactB = bodyB.categoryBitMask
+        
+        
+        switch contactA {
+            
+        case BodyType.Meteor:
+            
+            
+            
+            switch contactB {
+                
+                
+                
+            case BodyType.Meteor:
+                
+                break
+                
+                
+                
+            case BodyType.Bullet:
+                
+                if let bodyBNode = contact.bodyB.node as? SKSpriteNode, let bodyANode = contact.bodyA.node as? Enemy {
+                    
+                    bulletHitMeteor(bullet: bodyBNode, meteor: bodyANode)
+                    
+                }
+                
+                
+                
+            case BodyType.Hero:
+                
+                if let bodyBNode = contact.bodyB.node as? SKSpriteNode, let bodyANode = contact.bodyA.node as? Enemy {
+                    
+                    heroHitMeteor(player: bodyBNode, meteor: bodyANode)
+                    
+                }
+                
+                
+                
+            default:
+                
+                break
+                
+            }
+            
+            
+            
+        case BodyType.Bullet:
+            
+            
+            
+            switch contactB {
+                
+                
+                
+            case BodyType.Meteor:
+                
+                if let bodyANode = contact.bodyA.node as? SKSpriteNode, let bodyBNode = contact.bodyB.node as? Enemy {
+                    
+                   bulletHitMeteor(bullet: bodyANode, meteor: bodyBNode)
+                    
+                }
+                
+                
+                
+            case BodyType.Bullet:
+                
+                break
+                
+                
+                
+            case BodyType.Hero:
+                
+                break
+                
+                
+                
+            default:
+                
+                break
+                
+            }
+            
+            
+            
+        case BodyType.Hero:
+            
+            
+            
+            switch contactB {
+                
+                
+                
+            case BodyType.Meteor:
+                
+                if let bodyANode = contact.bodyA.node as? SKSpriteNode, let bodyBNode = contact.bodyB.node as? Enemy {
+                    
+                    heroHitMeteor(player: bodyANode, meteor: bodyBNode)
+                    
+                }           
+                
+                
+                
+            case BodyType.Bullet:
+                
+                break     
+                
+                
+                
+            case BodyType.Hero:
+                
+                break       
+                
+                
+                
+            default:
+                
+                break
+                
+            }
+            
+            
+            
+        default:
+            
+            break
+            
+        }
+    }
+    
+    
+    func bulletHitMeteor(bullet:SKSpriteNode, meteor: Enemy) {
+        
+        bullet.removeFromParent()
+        
+        meteor.removeFromParent()
+        
+        meteorScore+=1
+        
+        scoreLabel.text = "\(meteorScore)"
+    }
+    
+    func heroHitMeteor (player: SKSpriteNode, meteor: Enemy){
+            player.removeFromParent()
+            meteor.removeFromParent()
+        var gameOver = SKLabelNode (fontNamed: "Arail")
+        gameOver.text = "Game Over"
+        gameOver.fontSize = 30
+        gameOver.position = CGPoint (x: size.width/2, y: size.height/2)
+        addChild(gameOver)
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -193,5 +408,34 @@ class GameScene: SKScene {
         // Called before each frame is rendered
     }
     
+    func explodeMeteor(meteor: Enemy) {
+        
+        let explosions: [SKSpriteNode] = [SKSpriteNode(), SKSpriteNode(), SKSpriteNode(), SKSpriteNode(), SKSpriteNode()]
+        
+        for explosion in explosions {
+            
+            explosion.color = UIColor.orange
+            explosion.size = CGSize(width: 3, height: 3)
+            explosion.position = CGPoint(x: meteor.position.x, y: meteor.position.y)
+            
+            let randomExplosionX = (random() * (1000 + size.width)) - size.width
+            
+            let randomExplosionY = (random() * (1000 + size.height)) - size.width
+            
+            let moveExplosion: SKAction
+            
+            moveExplosion = SKAction.move(to: CGPoint(x: randomExplosionX, y: randomExplosionY), duration: 10.0)
+            explosion.run(SKAction.sequence([moveExplosion, SKAction.removeFromParent()]))
+            
+            let moveExplosion: SKAction
+            
+            moveExplosion = SKAction.move(to: CGPoint(x: randomExplosionX, y: randomExplosionY), duration: 10.0)
+            
+            explosion.run(SKAction.sequence([moveExplosion, SKAction.removeFromParent()]))
+            
+            
+            addChild(explosion)
+        }
+    }
     
 }
