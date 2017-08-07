@@ -19,6 +19,8 @@ struct BodyType {
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
 
+    var gameOver : Bool = false
+    var updateScore = true
     
     let hero = SKSpriteNode(imageNamed: "Spaceship")
     let heroSpeed: CGFloat = 100.0
@@ -26,6 +28,44 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var scoreLabel = SKLabelNode(fontNamed: "Arial")
     
+    var level = 1
+    
+    var levelLabel = SKLabelNode(fontNamed: "Arial")
+    
+    var levelLimit = 5
+    
+    var levelIncrease = 5
+    
+    var enemies = [Enemy]()
+    var enemyHealth = 1
+    
+    func increaseLevel(){
+        
+        levelLimit = levelLimit + levelIncrease
+        
+        level += 1
+        
+        levelLabel.text = "Level: \(level)"
+    }
+    
+    func checkLevelIncrease() {
+        
+        if meteorScore >= levelLimit {
+            
+            for enemy in enemies {
+                
+                enemy.removeFromParent()
+            }
+            
+            enemies = [Enemy]()
+            
+            print ("Level Up")
+            let runEnemies = SKAction.sequence([SKAction.run(stopEnemies), SKAction.run(increaseLevel), SKAction.wait(forDuration: 1.0), SKAction.run(addEnemies)])
+            
+            run(runEnemies)
+        }
+        
+    }
     
     //creates a random float between 0.0 and 1.0
     
@@ -58,6 +98,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         addChild(meteor)
         
+        enemies.append(meteor)
       
         
         var moveMeteor: SKAction
@@ -98,6 +139,18 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         addChild(scoreLabel)
         
+        levelLabel.fontColor = UIColor.yellow
+        
+        levelLabel.fontSize = 20
+        
+        levelLabel.position = CGPoint(x: self.size.width * 0.8, y: self.size.height * 0.9)
+        
+        addChild(levelLabel)
+        
+        levelLabel.text = "Level: 1"
+        
+        addEnemies()
+        
         scoreLabel.text = "0"
         
         
@@ -122,13 +175,26 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         swipeRight.direction = .right
         view.addGestureRecognizer(swipeRight)
         
-        run(SKAction.repeatForever(SKAction.sequence([SKAction.run(addMeteor), SKAction.wait(forDuration: 1)])))
-        
         physicsWorld.gravity = CGVector(dx:0,dy:0)
         
         physicsWorld.contactDelegate = self
+        
     }
     
+    func addEnemies() {
+        
+        run(SKAction.repeatForever(SKAction.sequence([SKAction.run(addMeteor), SKAction.wait(forDuration: 1.0)])), withKey:"addEnemies")
+    }
+    
+    func stopEnemies() {
+        
+        for enemy in enemies {
+            enemy.removeFromParent()
+        }
+        
+        removeAction(forKey: "addEnemies")
+    }
+
     
     //Gesture Actions
     func swipedUp(sender: UISwipeGestureRecognizer){
@@ -376,20 +442,33 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         bullet.removeFromParent()
         
         meteor.removeFromParent()
-        
-        meteorScore+=1
+        if updateScore == true{
+          meteorScore+=1
+            
+        if let meteorIndex = enemies.index(of: meteor) {
+                
+        enemies.remove(at: meteorIndex)
+            }
+        }
+
         
         scoreLabel.text = "\(meteorScore)"
+        checkLevelIncrease()
+        explodeMeteor(meteor: meteor)
     }
     
     func heroHitMeteor (player: SKSpriteNode, meteor: Enemy){
             player.removeFromParent()
             meteor.removeFromParent()
-        var gameOver = SKLabelNode (fontNamed: "Arail")
-        gameOver.text = "Game Over"
-        gameOver.fontSize = 30
-        gameOver.position = CGPoint (x: size.width/2, y: size.height/2)
-        addChild(gameOver)
+        var isgameOver = SKLabelNode (fontNamed: "Arail")
+        isgameOver.text = "Game Over"
+        isgameOver.fontSize = 30
+        isgameOver.position = CGPoint (x: size.width/2, y: size.height/2)
+        addChild(isgameOver)
+        updateScore = false
+        gameOver = true
+ //       addChild(scoreLabel)
+        
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -427,15 +506,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             moveExplosion = SKAction.move(to: CGPoint(x: randomExplosionX, y: randomExplosionY), duration: 10.0)
             explosion.run(SKAction.sequence([moveExplosion, SKAction.removeFromParent()]))
             
-            let moveExplosion: SKAction
-            
-            moveExplosion = SKAction.move(to: CGPoint(x: randomExplosionX, y: randomExplosionY), duration: 10.0)
-            
-            explosion.run(SKAction.sequence([moveExplosion, SKAction.removeFromParent()]))
-            
-            
             addChild(explosion)
         }
+    }
+    
+    func isGameOver() ->Bool{
+        return gameOver
     }
     
 }

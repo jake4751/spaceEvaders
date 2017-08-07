@@ -12,18 +12,21 @@ import GameplayKit
 
 class GameViewController: UIViewController {
 
+    var scene : GameScene?
+    var timer : Timer = Timer()
     override func viewDidLoad() {
         super.viewDidLoad()
         
         if let view = self.view as! SKView? {
             // Load the SKScene from 'GameScene.sks'
-            let scene = GameScene(size: view.bounds.size)
+            scene = GameScene(size: view.bounds.size)
             view.presentScene(scene)
             view.ignoresSiblingOrder = true
             
             view.showsFPS = true
             view.showsNodeCount = true
         }
+        scheduledTimerWithTimeInterval()
     }
 
     override var shouldAutorotate: Bool {
@@ -45,5 +48,25 @@ class GameViewController: UIViewController {
 
     override var prefersStatusBarHidden: Bool {
         return true
+    }
+    
+    func scheduledTimerWithTimeInterval(){
+        // Scheduling timer to Call the function "updateCounting" with the interval of 1 seconds
+        timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(self.updateCounting), userInfo: nil, repeats: true)
+    }
+    
+    func updateCounting(){
+        if(scene?.isGameOver())!
+        {
+            if let view = self.view as! SKView? {
+                // Load the SKScene from 'GameScene.sks'
+                scene = GameScene(size: view.bounds.size)
+                view.presentScene(scene)
+                view.ignoresSiblingOrder = true
+                
+                view.showsFPS = true
+                view.showsNodeCount = true
+            }
+        }
     }
 }
